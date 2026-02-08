@@ -1,4 +1,4 @@
-![Total Downloads](https://img.shields.io/github/downloads/Anishk362/SynK-RGIPT-FTP-Agent/total?style=for-the-badge&color=blue)
+![Latest Release Downloads](https://img.shields.io/github/downloads/Anishk362/SynK-RGIPT-FTP-Agent/latest/total?style=for-the-badge&color=blue)
 # SynK - RGIPT FTP Sync Agent
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue) ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-lightgrey) ![Status](https://img.shields.io/badge/status-Stable-success)
