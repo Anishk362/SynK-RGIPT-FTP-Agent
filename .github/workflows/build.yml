@@ -20,18 +20,23 @@ jobs:
         run: |
           pip install pyinstaller pillow requests
           
-      - name: Build EXE
+      - name: Build EXE (Directory Mode)
         run: |
-          pyinstaller --noconsole --onefile --icon=app_icon.ico --name=SynK SynK.py
+          # --onedir creates a folder instead of a temp file (Fixes MEI Error)
+          pyinstaller --noconsole --onedir --icon=app_icon.ico --name=SynK SynK.py
           
       - name: Prepare Release Zip
         shell: cmd
         run: |
-          mkdir release_dist
-          copy dist\SynK.exe release_dist\
-          if exist README_Windows.txt copy README_Windows.txt release_dist\README.txt
-          cd release_dist
-          7z a ../SynK-Windows.zip *
+          :: Move the build to a clean folder name
+          move dist\SynK dist\SynK-Windows
+          
+          :: Copy Readme into the folder
+          if exist README_Windows.txt copy README_Windows.txt dist\SynK-Windows\README.txt
+          
+          :: Zip the entire folder
+          cd dist
+          7z a ../SynK-Windows.zip SynK-Windows
           
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
