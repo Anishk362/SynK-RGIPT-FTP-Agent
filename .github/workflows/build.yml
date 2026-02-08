@@ -1,0 +1,87 @@
+name: Build SynK Binaries
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger only when you push a tag like v1.0
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12' 
+          
+      - name: Install Dependencies
+        run: |
+          pip install pyinstaller pillow requests
+          
+      - name: Build EXE
+        run: |
+          pyinstaller --noconsole --onefile --icon=app_icon.ico --name=SynK SynK.py
+          
+      - name: Prepare Release Zip
+        run: |
+          mkdir release_dist
+          copy dist\SynK.exe release_dist\
+          copy README_Windows.txt release_dist\README.txt
+          cd release_dist
+          7z a ../SynK-Windows.zip *
+          
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: SynK-Windows
+          path: SynK-Windows.zip
+
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+          
+      - name: Install Dependencies
+        run: |
+          pip install pyinstaller pillow
+          
+      - name: Build APP
+        run: |
+          # Mac builds usually need windowed mode for GUI
+          pyinstaller --windowed --onefile --name SynK SynK.py
+          
+      - name: Prepare Release Zip
+        run: |
+          mkdir release_dist
+          cp -R dist/SynK.app release_dist/
+          cp README_Mac.txt release_dist/README.txt
+          cd release_dist
+          zip -r ../SynK-MacOS.zip .
+          
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: SynK-MacOS
+          path: SynK-MacOS.zip
+
+  release:
+    needs: [build-windows, build-mac]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v3
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            SynK-Windows/SynK-Windows.zip
+            SynK-MacOS/SynK-MacOS.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
