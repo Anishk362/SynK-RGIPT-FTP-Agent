@@ -16,7 +16,7 @@
 
 ## 📥 Download
 
-**[Click here to visit the Releases Page](https://github.com/AnishKalra/SynK-RGIPT-FTP-Agent/releases)**
+**[Click here to visit the Releases Page](https://github.com/Anishk362/SynK-RGIPT-FTP-Agent/releases)**
 
 Please read the specific installation instructions for your OS on the download page, as this app is unsigned.
 
