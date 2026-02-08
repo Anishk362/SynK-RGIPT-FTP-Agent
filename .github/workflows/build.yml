@@ -3,7 +3,7 @@ name: Build SynK Binaries
 on:
   push:
     tags:
-      - 'v*' # Trigger only when you push a tag like v1.0
+      - 'v*'
 
 jobs:
   build-windows:
@@ -28,7 +28,7 @@ jobs:
         run: |
           mkdir release_dist
           copy dist\SynK.exe release_dist\
-          copy README_Windows.txt release_dist\README.txt
+          if exist README_Windows.txt copy README_Windows.txt release_dist\README.txt
           cd release_dist
           7z a ../SynK-Windows.zip *
           
@@ -50,18 +50,17 @@ jobs:
           
       - name: Install Dependencies
         run: |
-          pip install pyinstaller pillow
+          pip install pyinstaller pillow requests
           
       - name: Build APP
         run: |
-          # Mac builds usually need windowed mode for GUI
-          pyinstaller --windowed --onefile --name SynK SynK.py
+          pyinstaller --windowed --onefile --icon=app_icon.ico --name SynK SynK.py
           
       - name: Prepare Release Zip
         run: |
           mkdir release_dist
           cp -R dist/SynK.app release_dist/
-          cp README_Mac.txt release_dist/README.txt
+          if [ -f README_Mac.txt ]; then cp README_Mac.txt release_dist/README.txt; fi
           cd release_dist
           zip -r ../SynK-MacOS.zip .
           
@@ -84,4 +83,4 @@ jobs:
             SynK-Windows/SynK-Windows.zip
             SynK-MacOS/SynK-MacOS.zip
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}git add .github/workflows/build.yml
