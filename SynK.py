@@ -28,6 +28,7 @@ if getattr(sys, 'frozen', False):
             try: os.makedirs(CONFIG_DIR)
             except: pass
         CONFIG_FILE = os.path.join(CONFIG_DIR, "SynK_config.json")
+        LOG_FILE = os.path.join(CONFIG_DIR, "SynK.log")
         
         # For Mac, we don't change directory to the App Bundle as we can't write there anyway
         APP_DIR = APP_BUNDLE_PATH 
@@ -38,12 +39,14 @@ if getattr(sys, 'frozen', False):
         try: os.chdir(APP_DIR)
         except: pass
         CONFIG_FILE = os.path.join(APP_DIR, "SynK_config.json")
+        LOG_FILE = os.path.join(APP_DIR, "SynK.log")
 else:
     EXE_PATH = os.path.abspath(__file__)
     APP_DIR = os.path.dirname(os.path.abspath(__file__))
     try: os.chdir(APP_DIR)
     except: pass
     CONFIG_FILE = os.path.join(APP_DIR, "SynK_config.json")
+    LOG_FILE = os.path.join(APP_DIR, "SynK.log")
 
 POLL_INTERVAL = 3600  # 1 Hour
 DEFAULT_HOST = "192.168.3.9" 
@@ -51,6 +54,15 @@ DEFAULT_HOST = "192.168.3.9"
 # -------------------------------------------------------------------------
 # SYNC ENGINE
 # -------------------------------------------------------------------------
+
+def log_error(message):
+    """Writes error messages to a local log file with timestamp."""
+    try:
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        # SENIOR DEV FIX: Added encoding='utf-8' to prevent crashes on non-ASCII systems
+        with open(LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(f"[{timestamp}] {message}\n")
+    except: pass
 
 def is_directory(ftp, item):
     original = ftp.pwd()
@@ -96,13 +108,26 @@ def sync_recursive(ftp, local_path):
 
 def run_sync_cycle(sync_list):
     for task in sync_list:
+        ftp = None
         try:
             ftp = ftplib.FTP(task['host'], timeout=30)
             ftp.login(task['user'], task['pass'])
-            if task['remote_dir']: ftp.cwd(task['remote_dir'])
+            
+            # EDGE CASE HANDLER: If Prof renames/deletes folder, this throws error
+            # We catch it specifically so the app continues to sync other subjects
+            if task['remote_dir']: 
+                try:
+                    ftp.cwd(task['remote_dir'])
+                except Exception as e:
+                    log_error(f"SYNC FAIL: Remote folder '{task['remote_dir']}' not found. Professor may have renamed it.")
+                    ftp.quit()
+                    continue
+
             sync_recursive(ftp, task['local_dir'])
             ftp.quit()
-        except: pass
+        except Exception as main_e: 
+            log_error(f"CONNECTION FAIL: Could not connect to {task.get('host', 'unknown')}. {main_e}")
+            pass
 
 # -------------------------------------------------------------------------
 # GUI SECTION
@@ -117,9 +142,11 @@ class SetupApp:
 
         if os.path.exists(CONFIG_FILE):
             try:
-                with open(CONFIG_FILE, 'r') as f:
+                # SENIOR DEV FIX: Added encoding='utf-8' for robust JSON reading
+                with open(CONFIG_FILE, 'r', encoding="utf-8") as f:
                     self.tasks = json.load(f)
-            except: pass
+            except: 
+                self.tasks = [] # Safe fallback if JSON is corrupt
 
         tk.Label(root, text='Add New "SynK" Task', font=("Segoe UI", 12, "bold")).pack(pady=10)
 
@@ -150,13 +177,25 @@ class SetupApp:
         tk.Button(root, text="+ VERIFY & ADD TASK", command=self.add_task, bg="#e1e1e1", font=("Segoe UI", 9, "bold")).pack(pady=15)
 
         tk.Label(root, text="Configured Tasks:", font=("Segoe UI", 10, "bold")).pack(pady=5)
-        self.listbox = tk.Listbox(root, height=6, width=60)
-        self.listbox.pack(padx=20)
+        
+        # --- SCROLLABLE FRAME (Replaces Listbox to support Buttons) ---
+        self.list_container = tk.Frame(root, relief="sunken", bd=1)
+        self.list_container.pack(padx=20, pady=5, fill="both", expand=True)
 
-        # Populate list
-        for t in self.tasks:
-            display_text = f"{t['user']} -> .../{os.path.basename(t['local_dir'])}"
-            self.listbox.insert(tk.END, display_text)
+        self.canvas = tk.Canvas(self.list_container, bg="white", highlightthickness=0)
+        self.scrollbar = tk.Scrollbar(self.list_container, orient="vertical", command=self.canvas.yview)
+        self.scrollable_frame = tk.Frame(self.canvas, bg="white")
+
+        self.scrollable_frame.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
+        self.canvas_frame_window = self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.canvas.bind("<Configure>", lambda e: self.canvas.itemconfig(self.canvas_frame_window, width=e.width))
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
+        
+        self.refresh_task_list()
+        # -------------------------------------------------------
 
         tk.Button(root, text="SAVE & START SynK", command=self.save_and_start, bg="#007bff", fg="white", font=("Segoe UI", 11, "bold"), height=2).pack(pady=20, fill="x", padx=20)
 
@@ -167,6 +206,30 @@ class SetupApp:
         if folder:
             self.current_local_path = folder
             self.lbl_local_path.config(text=folder)
+
+    # --- UI UPDATE: Function to Draw Rows with Delete Buttons ---
+    def refresh_task_list(self):
+        for widget in self.scrollable_frame.winfo_children():
+            widget.destroy()
+
+        for i, task in enumerate(self.tasks):
+            row = tk.Frame(self.scrollable_frame, bg="white", pady=2)
+            row.pack(fill="x", expand=True, pady=1)
+
+            display_text = f"{task['user']} -> .../{os.path.basename(task['local_dir'])}"
+            tk.Label(row, text=display_text, bg="white", anchor="w", font=("Segoe UI", 9)).pack(side="left", padx=5, fill="x", expand=True)
+
+            # Red Trash Button
+            btn = tk.Button(row, text="✖", bg="#dc3545", fg="white", font=("Segoe UI", 8, "bold"), width=3,
+                            activebackground="#bd2130", activeforeground="white",
+                            command=lambda idx=i: self.delete_task(idx))
+            btn.pack(side="right", padx=5)
+            
+            tk.Frame(self.scrollable_frame, height=1, bg="#e0e0e0").pack(fill="x")
+
+    def delete_task(self, index):
+        self.tasks.pop(index)
+        self.refresh_task_list()
 
     def add_task(self):
         host = self.entry_host.get().strip()
@@ -195,7 +258,7 @@ class SetupApp:
 
         task = {"host": host, "user": user, "pass": pwd, "remote_dir": remote, "local_dir": local}
         self.tasks.append(task)
-        self.listbox.insert(tk.END, f"{user} -> .../{os.path.basename(local)}")
+        self.refresh_task_list()
         
         self.entry_remote.delete(0, tk.END)
         self.lbl_local_path.config(text="No folder selected")
@@ -203,12 +266,9 @@ class SetupApp:
         messagebox.showinfo("Success", "Task Verified & Added!")
 
     def save_and_start(self):
-        if not self.tasks:
-            messagebox.showerror("Error", "No tasks to save!")
-            return
-        
         try:
-            with open(CONFIG_FILE, 'w') as f:
+            # SENIOR DEV FIX: encoding='utf-8'
+            with open(CONFIG_FILE, 'w', encoding="utf-8") as f:
                 json.dump(self.tasks, f)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save config: {e}")
@@ -247,7 +307,7 @@ def add_to_startup():
         if platform.system() == "Windows":
             startup = os.path.join(os.getenv('APPDATA'), r'Microsoft\Windows\Start Menu\Programs\Startup')
             vbs = os.path.join(startup, "SynK_Agent.vbs")
-            with open(vbs, "w") as f:
+            with open(vbs, "w", encoding="utf-8") as f:
                 f.write('Set WshShell = CreateObject("WScript.Shell")\n')
                 # IMPORTANT: We use --silent flag
                 f.write(f'WshShell.Run chr(34) & "{EXE_PATH}" & chr(34) & " --silent", 0\n')
@@ -277,7 +337,7 @@ def add_to_startup():
     <string>/dev/null</string>
 </dict>
 </plist>"""
-            with open(plist, "w") as f: f.write(content)
+            with open(plist, "w", encoding="utf-8") as f: f.write(content)
     except: pass
 
 # -------------------------------------------------------------------------
@@ -304,7 +364,8 @@ if __name__ == "__main__":
         while True:
             if os.path.exists(CONFIG_FILE):
                 try:
-                    with open(CONFIG_FILE, 'r') as f: tasks = json.load(f)
+                    # SENIOR DEV FIX: encoding='utf-8'
+                    with open(CONFIG_FILE, 'r', encoding="utf-8") as f: tasks = json.load(f)
                     run_sync_cycle(tasks)
                 except: pass
             time.sleep(POLL_INTERVAL)
@@ -317,7 +378,8 @@ if __name__ == "__main__":
                 # Ensure we look in the APP_DIR for the icon
                 icon_path = os.path.join(APP_DIR, "app_icon.ico")
                 if os.path.exists(icon_path):
-                    root.iconbitmap(icon_path)
+                    # FIX: Use 'default=' to enforce Taskbar Icon
+                    root.iconbitmap(default=icon_path)
         except: pass
         
         app = SetupApp(root)
