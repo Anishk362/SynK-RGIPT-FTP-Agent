@@ -114,7 +114,6 @@ def run_sync_cycle(sync_list):
             ftp.login(task['user'], task['pass'])
             
             # EDGE CASE HANDLER: If Prof renames/deletes folder, this throws error
-            # We catch it specifically so the app continues to sync other subjects
             if task['remote_dir']: 
                 try:
                     ftp.cwd(task['remote_dir'])
@@ -142,11 +141,10 @@ class SetupApp:
 
         if os.path.exists(CONFIG_FILE):
             try:
-                # SENIOR DEV FIX: Added encoding='utf-8' for robust JSON reading
                 with open(CONFIG_FILE, 'r', encoding="utf-8") as f:
                     self.tasks = json.load(f)
             except: 
-                self.tasks = [] # Safe fallback if JSON is corrupt
+                self.tasks = [] 
 
         tk.Label(root, text='Add New "SynK" Task', font=("Segoe UI", 12, "bold")).pack(pady=10)
 
@@ -178,7 +176,11 @@ class SetupApp:
 
         tk.Label(root, text="Configured Tasks:", font=("Segoe UI", 10, "bold")).pack(pady=5)
         
-        # --- SCROLLABLE FRAME (Replaces Listbox to support Buttons) ---
+        # --- LAYOUT FIX: PACK SAVE BUTTON FIRST (BOTTOM) ---
+        # This guarantees the button is always visible at the bottom, even if the list grows.
+        tk.Button(root, text="SAVE & START SynK", command=self.save_and_start, bg="#007bff", fg="white", font=("Segoe UI", 11, "bold"), height=2).pack(side=tk.BOTTOM, fill="x", padx=20, pady=20)
+
+        # --- SCROLLABLE FRAME (Fills Remaining Space) ---
         self.list_container = tk.Frame(root, relief="sunken", bd=1)
         self.list_container.pack(padx=20, pady=5, fill="both", expand=True)
 
@@ -196,8 +198,6 @@ class SetupApp:
         
         self.refresh_task_list()
         # -------------------------------------------------------
-
-        tk.Button(root, text="SAVE & START SynK", command=self.save_and_start, bg="#007bff", fg="white", font=("Segoe UI", 11, "bold"), height=2).pack(pady=20, fill="x", padx=20)
 
         self.current_local_path = ""
 
@@ -267,7 +267,6 @@ class SetupApp:
 
     def save_and_start(self):
         try:
-            # SENIOR DEV FIX: encoding='utf-8'
             with open(CONFIG_FILE, 'w', encoding="utf-8") as f:
                 json.dump(self.tasks, f)
         except Exception as e:
