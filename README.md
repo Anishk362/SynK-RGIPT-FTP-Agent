@@ -2,8 +2,10 @@
 # SynK - RGIPT FTP Sync Agent
 
 [![Version](https://img.shields.io/badge/version-1.0.0-blue)](https://github.com/Anishk362/SynK-RGIPT-FTP-Agent/releases/latest)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-lightgrey)](#-critical-installation-instructions)
+[![Windows](https://img.shields.io/badge/platform-Windows-blue?logo=windows)](https://github.com/Anishk362/SynK-RGIPT-FTP-Agent/blob/main/README_Windows.txt)
+[![macOS](https://img.shields.io/badge/platform-macOS-lightgrey?logo=apple)](https://github.com/Anishk362/SynK-RGIPT-FTP-Agent/blob/main/README_Mac.txt)
 [![Status](https://img.shields.io/badge/status-Stable-success)](https://github.com/Anishk362/SynK-RGIPT-FTP-Agent/actions)
+
 **SynK** is a "Set it and Forget it" background utility designed for students of **Rajiv Gandhi Institute of Petroleum Technology (RGIPT)**. It automatically mirrors course materials from the college FTP server to your local machine, ensuring you never miss a professor's upload.
 
 ---
