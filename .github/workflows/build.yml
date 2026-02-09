@@ -14,7 +14,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12' 
+          python-version: '3.12'
           
       - name: Install Dependencies
         run: |
@@ -33,6 +33,9 @@ jobs:
           
           :: Copy Readme into the folder
           if exist README_Windows.txt copy README_Windows.txt dist\SynK-Windows\README.txt
+          
+          :: [CRITICAL FIX] Copy the Icon file so the Taskbar can find it
+          if exist app_icon.ico copy app_icon.ico dist\SynK-Windows\app_icon.ico
           
           :: Zip the entire folder
           cd dist
