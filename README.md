@@ -19,12 +19,6 @@
 
 Once configured, SynK runs silently in the background. You never have to manually check the FTP server again.
 
-> [!WARNING]
-> **Important Note on File Syncing:**
-> SynK is designed to keep your folder identical to the Professor's folder.
-> * If a professor updates/fixes a file, **SynK will overwrite your local copy** with the new version.
-> * **Do not save your personal notes directly inside the synced PDF files.** Save your notes in a separate file or folder to prevent them from being overwritten.
-
 ## 🚀 Key Features
 
 * **Zero Distraction:** Runs silently in the system tray/background. No open windows.
